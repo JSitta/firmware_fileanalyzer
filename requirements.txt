@@ -1,0 +1,9 @@
+# requirements.txt – Abhängigkeiten
+
+"""
+# Basis-Abhängigkeiten für dieses Projekt
+
+# (Optional: nur wenn du die CLI erweitern willst)
+typer>=0.9.0
+click>=8.1.0
+"""
