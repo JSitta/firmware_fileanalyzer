@@ -16,3 +16,16 @@
 2025-04-22 12:29:01,450 - INFO - Analyse durchgeführt für 1 Dateien. Zeilen: 0, Wörter: 0, Zeichen: 0, Bytes: 0
 2025-04-22 17:05:29,596 - INFO - Analyse durchgeführt für 1 Dateien. Zeilen: 4, Wörter: 9, Zeichen: 44, Bytes: 47
 2025-04-22 17:10:52,077 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-23 08:58:55,202 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-23 09:13:28,333 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-23 09:18:05,572 - ERROR - ❌ Verzeichnis nicht gefunden: C:UsersjuergDocumentsTesla_Projectlog_parser_toolfile_analyzertestdata
+2025-04-23 09:21:58,836 - INFO - Analyse durchgeführt für 5 Dateien. Zeilen: 69, Wörter: 232, Zeichen: 1724, Bytes: 1858
+2025-04-23 09:43:43,657 - INFO - Textoperation durchgeführt: remove_whitespace + word_count
+2025-04-23 09:57:37,329 - INFO - Textoperation durchgeführt: remove_whitespace + word_count
+2025-04-23 09:58:07,448 - INFO - Textoperation durchgeführt: remove_whitespace + word_count
+2025-04-23 10:57:05,416 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-23 11:01:28,366 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-24 13:09:35,076 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-24 13:27:29,094 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-24 13:46:34,087 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
+2025-04-24 14:28:48,170 - INFO - Analyse durchgeführt für 6 Dateien. Zeilen: 73, Wörter: 241, Zeichen: 1768, Bytes: 1905
