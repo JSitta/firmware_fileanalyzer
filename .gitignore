@@ -3,3 +3,4 @@ report.csv
 *.json
 app.log
 __pycache__
+Chart_Words_in_File.png
