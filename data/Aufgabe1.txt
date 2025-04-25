@@ -10,7 +10,7 @@ Längste Datei
 Datei mit den meisten Wörtern
 
 🛠️ Anforderungen:
-Verzeichnisname soll per Funktion übergeben werden
+Verzeichnisname soll per Funktion tEsLa übergeben werden
 
 Nutze mindestens 3 eigene Funktionen (z. B. count_lines, find_largest_file, …)
 
