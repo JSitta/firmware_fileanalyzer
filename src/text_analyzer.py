@@ -90,13 +90,14 @@ class TextAnalyzer:
 
 # Ergänzung mit pandas - python analysis data system -   
     
-
-    def report_pandas(self, export_path="report.csv"):
-        """Zusätzliche Analyse mit pandas – statistisch & exportierbar"""
+    def report_pandas(self, export_path="report.csv", file_format="csv"):
+        """Erweiterte Statistik mit pandas – als CSV oder JSON, inkl. Filter & Diagramm"""
         try:
             import pandas as pd
+            import matplotlib.pyplot as plt
         except ImportError:
-            print("📦 Hinweis: pandas ist nicht installiert. Installiere es mit `pip install pandas`.")
+            print("📦 Hinweis: pandas oder matplotlib ist nicht installiert.")
+            print("👉 Installiere sie mit `pip install pandas matplotlib`.")
             return
 
         if not self.file_stats:
@@ -108,16 +109,39 @@ class TextAnalyzer:
         print("\n📊 Erweiterte Statistik (pandas):")
         print(df.describe(include='all').round(2))
 
-        df.to_csv(export_path, index=False)
-        print(f"💾 Exportiert nach: {export_path}")
-        
-        
-        # Am Ende der Methode report_pandas(), öffnet automatisch die.CSV Datei in Windows mit der
-        # Funktion Öffnen mit: Excel ist hier bei CSV-Dateien voreingestellt.
+        # 🔍 Top 3 Dateien nach Wortanzahl
+        print("\n📄 Top 3 Dateien mit den meisten Wörtern:")
+        top_words = df.sort_values("words", ascending=False).head(3)
+        print(top_words[["filename", "words"]].to_string(index=False))
+
+        # 📈 Diagramm anzeigen
         try:
-            os.startfile(export_path)
+            plt.figure(figsize=(8, 4))
+            df_sorted = df.sort_values("words", ascending=False)
+            plt.bar(df_sorted["filename"], df_sorted["words"], color='skyblue')
+            plt.title("Wörter pro Datei")
+            plt.ylabel("Anzahl Wörter")
+            plt.xlabel("Dateiname")
+            plt.xticks(rotation=45, ha="right")
+            plt.tight_layout()
+            plt.show()
         except Exception as e:
-            print(f"⚠️ Konnte Datei nicht automatisch öffnen: {e}")
+            print(f"⚠️ Konnte Diagramm nicht anzeigen: {e}")
+
+        # 💾 Exportieren
+        try:
+            if file_format.lower() == "json":
+                df.to_json(export_path, orient="records", indent=2)
+            else:
+                df.to_csv(export_path, index=False)
+
+            print(f"💾 Exportiert nach: {export_path}")
+            try:
+                os.startfile(export_path)
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"⚠️ Export oder Öffnen fehlgeschlagen: {e}")
 
 
 # Hier kommt die TextAnalyzer-Klasse hinein.

@@ -1,0 +1,5 @@
+report.csv
+*.csv
+*.json
+app.log
+__pycache__

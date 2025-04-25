@@ -7,4 +7,5 @@
 typer>=0.9.0
 click>=8.1.0
 pandas>=2.2.0
+matplotlib
 """

@@ -1,7 +1,8 @@
 # main.py – Erste Erweiterung vom Einstiegspunkt, argparse wird ersetzt durch typer
 # zusätzlich wird die Existenz des Pfades bei analyze überprüft. Eingabe bei clean-text ist
 # interaktiv möglich.
-# Aufruf: python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. report_test.csv)
+# Aufruf: python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. report_test.csv) --format csv
+#         python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. stats.json) --format json
 
 import typer
 import logging
@@ -53,19 +54,19 @@ def clean_text(
 @app.command()
 def analyze_pandas(
     dir: str = typer.Option(
-        "./data",
-        "--dir",
-        "-d",
+        "./data", "--dir", "-d",
         help="Pfad zum Verzeichnis mit .txt-Dateien"
     ),
     export: str = typer.Option(
-        "report.csv",
-        "--export",
-        "-e",
-        help="Pfad zur Ausgabedatei für Statistik (CSV)"
+        "report.csv", "--export", "-e",
+        help="Pfad zur Ausgabedatei"
+    ),
+    format: str = typer.Option(
+        "csv", "--format", "-f",
+        help="Exportformat: csv oder json"
     )
 ):
-    """Analysiert mit pandas-Erweiterung und exportiert als CSV."""
+    """Analysiert mit pandas-Erweiterung und exportiert als CSV oder JSON."""
     if not os.path.exists(dir):
         typer.echo(f"❌ Fehler: Verzeichnis nicht gefunden: {dir}")
         raise typer.Exit(code=1)
@@ -74,7 +75,7 @@ def analyze_pandas(
     if analyzer.collect_files():
         analyzer.analyze()
         analyzer.report()
-        analyzer.report_pandas(export)
+        analyzer.report_pandas(export_path=export, file_format=format)
 
 
 if __name__ == "__main__":

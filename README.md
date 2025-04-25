@@ -23,6 +23,9 @@ Dieses Projekt enthält ein modulares Analysetool für Textdateien zur Vorbereit
 ▶️ Verwendung:
 
     python main.py --dir ./data
+    python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. report_test.csv) --format csv
+    python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. stats.json) --format json
+
 
 🧪 Tests ausführen:
 
