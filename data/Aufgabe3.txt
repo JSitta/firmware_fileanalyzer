@@ -1,6 +1,0 @@
-⚙️ Aufgabe 3 – Eigene Module sauber verwenden
-Ziel: Schreibe die Funktionen aus Aufgabe 1 in ein Modul analyzer.py und importiere sie in deinem Hauptskript (main.py).
-
-💡 Bonus:
-Erstelle zusätzlich ein Hilfsmodul texttools.py, z. B. mit einer Funktion count_words_in_file(filepath)
-

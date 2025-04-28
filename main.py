@@ -12,9 +12,14 @@ from src.file_writer import export_to_csv, export_to_json
 from src.file_reader import read_text_file
 from src.log_util import setup_logger
 from src.text_analyzer import TextAnalyzer
+from src.visualizer import plot_analysis, plot_trends
+from src.data_analysis import build_enhanced_dataframe, save_dataframe, calculate_correlations, count_log_entries, classify_errors
 from typing import Optional
 from rich import print as rprint
 from rich.text import Text
+from rich.console import Console
+from rich.table import Table
+
 
 app = typer.Typer()
 setup_logger()
@@ -151,6 +156,78 @@ def export_basic(
         export_to_json(stats, output)
     else:
         export_to_csv(stats, output)
+
+
+@app.command()
+def visualize(
+    dir: str = "./data",
+    export: str = typer.Option(None, "--export", "-e", help="Exportiere erweiterten DataFrame (Pfad zu .csv oder .json)")
+):
+    """Erstellt Visualisierungen auf Basis der .txt-Analysen."""
+    analyzer = TextAnalyzer(dir)
+    if analyzer.collect_files():
+        analyzer.analyze()
+        data = []
+        for filename in analyzer.txt_files:
+            path = os.path.join(dir, filename)
+            text = read_text_file(path)
+            errors, warnings, infos = count_log_entries(text) if text else (0, 0, 0)
+            error_classes = classify_errors(text) if text else {}
+
+            # Berechnung der Statistiken
+            data.append({
+                "filename": filename,
+                "lines": text.count('\n') + 1 if text else 0,
+                "words": word_count(text) if text else 0,
+                "chars": len(text) if text else 0,
+                "bytes": os.path.getsize(path) if os.path.exists(path) else 0,
+                "errors": errors,
+                "warnings": warnings,
+                "infos": infos,
+                "sensor_errors": error_classes.get("sensor_error", 0),
+                "voltage_warnings": error_classes.get("voltage_warning", 0),
+                "communication_errors": error_classes.get("communication_error", 0),
+                "firmware_issues": error_classes.get("firmware_issue", 0),
+                "collision_errors": error_classes.get("collision_error", 0)
+            })
+        plot_analysis(data)
+
+        # Erstellen des erweiterten DataFrames
+        enhanced_df = build_enhanced_dataframe(data)
+        # Ausgabe des erweiterten DataFrames im Terminal
+        #typer.echo("\n📈 Erweiterte Analyse:\n")
+        #typer.echo(enhanced_df.to_string(index=False))
+
+        console = Console()
+
+        # Ausgabe schöner formatieren mit Rich-Table
+        table = Table(title="📈 Erweiterte Analyse der Textdateien", header_style="bold cyan")
+
+        # Spalten dynamisch aus dem DataFrame übernehmen
+        for col in enhanced_df.columns:
+            table.add_column(str(col), justify="right")
+
+        # Zeilen ausfüllen
+        for _, row in enhanced_df.iterrows():
+            table.add_row(*[str(x) for x in row])
+
+        console.print(table)
+
+        plot_trends(data)
+        correlations = calculate_correlations(data)
+
+        console = Console()
+        console.print("\n📊 [bold magenta]Korrelationsmatrix:[/bold magenta]")
+        console.print(correlations)
+   
+
+        # Export, wenn Option angegeben ist
+        if export:
+            save_dataframe(enhanced_df, export)
+
+        typer.echo("✅ Visualisierungen wurden erfolgreich erstellt und gespeichert.")
+
+
 
 if __name__ == "__main__":
     app()

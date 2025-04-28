@@ -1,9 +1,0 @@
-❓ Reflexion:
-Beantworte für dich (oder mir zur Diskussion):
-
-Warum ist es sinnvoll, Code in Module zu unterteilen?
-
-Welche Vorteile bietet argparse im Vergleich zu input()?
-
-Warum ist if __name__ == "__main__" so wichtig?
-

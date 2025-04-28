@@ -1,0 +1,8 @@
+Temperature: 43.5 °C
+Humidity: 48.0 %
+Battery Voltage: 12.3 V
+Motor RPM: 1270
+Load Current: 3.1 A
+Gyro X: 0.02
+Gyro Y: -0.01
+Gyro Z: 0.03

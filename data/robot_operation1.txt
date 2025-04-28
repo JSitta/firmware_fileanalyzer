@@ -1,0 +1,8 @@
+Startup complete at 2025-04-27 06:00:00
+Entering autonomous navigation mode.
+Reached waypoint 1 (X: 2.0, Y: 3.5, Z: 0.5)
+Reached waypoint 2 (X: 4.5, Y: 6.0, Z: 0.5)
+Obstacle detected at 2025-04-27 06:15:20
+Rerouting successful
+Reached final destination (X: 10.0, Y: 12.5, Z: 0.5)
+Shutdown initiated - mission complete

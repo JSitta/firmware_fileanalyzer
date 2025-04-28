@@ -1,0 +1,6 @@
+[2025-04-27 07:55:01] INFO: Power-up sequence initiated.
+[2025-04-27 07:55:05] INFO: System self-test passed.
+[2025-04-27 07:55:15] WARN: Voltage fluctuation detected.
+[2025-04-27 07:55:20] INFO: Communication link established.
+[2025-04-27 07:55:25] ERROR: Sensor array failure detected.
+[2025-04-27 07:55:30] INFO: Attempting recovery procedure.

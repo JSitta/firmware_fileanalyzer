@@ -1,0 +1,6 @@
+[2025-04-27 08:20:00] INFO: Firmware update started.
+[2025-04-27 08:20:05] INFO: Writing new firmware version 4.1.0.
+[2025-04-27 08:20:30] WARN: Temporary disconnect from module 3.
+[2025-04-27 08:21:00] INFO: Firmware update completed successfully.
+[2025-04-27 08:21:05] INFO: System reboot in progress.
+[2025-04-27 08:21:10] INFO: System operational after reboot.
