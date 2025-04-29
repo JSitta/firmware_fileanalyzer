@@ -11,11 +11,13 @@ def build_enhanced_dataframe(data):
     df["words_per_line"] = df["words"] / df["lines"]
     df["chars_per_word"] = df["chars"] / df["words"]
     df["bytes_per_char"] = df["bytes"] / df["chars"]
+    df["error_rate_percent"] = (df["errors"] / df["lines"]) * 100
 
     df = df.round({
         "words_per_line": 2,
         "chars_per_word": 2,
-        "bytes_per_char": 2
+        "bytes_per_char": 2,
+        "error_rate_percent": 2
     })
 
     return df

@@ -13,7 +13,8 @@ from src.file_reader import read_text_file
 from src.log_util import setup_logger
 from src.text_analyzer import TextAnalyzer
 from src.visualizer import plot_analysis, plot_trends
-from src.data_analysis import build_enhanced_dataframe, save_dataframe, calculate_correlations, count_log_entries, classify_errors
+from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
+                               calculate_correlations, count_log_entries, classify_errors)
 from typing import Optional
 from rich import print as rprint
 from rich.text import Text
@@ -161,7 +162,8 @@ def export_basic(
 @app.command()
 def visualize(
     dir: str = "./data",
-    export: str = typer.Option(None, "--export", "-e", help="Exportiere erweiterten DataFrame (Pfad zu .csv oder .json)")
+    export: str = typer.Option(None, "--export", "-e", help="Exportiere erweiterten DataFrame (Pfad zu .csv oder .json)"),
+    alert_threshold: float = typer.Option(10.0, "--alert-threshold", "-a", help="Fehlerquote-Schwelle für Warnungen (%)")
 ):
     """Erstellt Visualisierungen auf Basis der .txt-Analysen."""
     analyzer = TextAnalyzer(dir)
@@ -209,7 +211,15 @@ def visualize(
 
         # Zeilen ausfüllen
         for _, row in enhanced_df.iterrows():
-            table.add_row(*[str(x) for x in row])
+            row_values = []
+            for col_name in enhanced_df.columns:
+                value = row[col_name]
+                if col_name == "error_rate_percent" and value > 10:
+                    row_values.append(f"[bold red]{value:.2f} ⚠️[/bold red]")
+                else:
+                    row_values.append(str(value))
+            table.add_row(*row_values)
+
 
         console.print(table)
 
@@ -219,7 +229,17 @@ def visualize(
         console = Console()
         console.print("\n📊 [bold magenta]Korrelationsmatrix:[/bold magenta]")
         console.print(correlations)
-   
+
+        # Zusammenfassung: Anzahl kritischer Dateien
+        critical_files = enhanced_df[enhanced_df["error_rate_percent"] > alert_threshold]
+        
+        if not critical_files.empty:
+            console.print(f"\n[bold red]⚠️ {len(critical_files)} Datei(en) mit Fehlerquote > {alert_threshold:.1f} % erkannt:[/bold red]")
+            for filename in critical_files["filename"]:
+                console.print(f" - [yellow]{filename}[/yellow]")
+        else:
+            console.print(f"\n[bold green]✅ Keine kritischen Fehlerquoten über {alert_threshold:.1f} % erkannt.[/bold green]")
+
 
         # Export, wenn Option angegeben ist
         if export:
