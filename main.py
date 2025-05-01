@@ -12,9 +12,11 @@ from src.file_writer import export_to_csv, export_to_json
 from src.file_reader import read_text_file
 from src.log_util import setup_logger
 from src.text_analyzer import TextAnalyzer
-from src.visualizer import plot_analysis, plot_trends
+from src.visualizer import plot_analysis, plot_trends, plot_error_types
 from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
                                calculate_correlations, count_log_entries, classify_errors)
+from src.error_visualizer import plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf
+from src.error_timeparser import classify_error_type, extract_timestamp, build_error_dataframe
 from typing import Optional
 from rich import print as rprint
 from rich.text import Text
@@ -190,9 +192,16 @@ def visualize(
                 "voltage_warnings": error_classes.get("voltage_warning", 0),
                 "communication_errors": error_classes.get("communication_error", 0),
                 "firmware_issues": error_classes.get("firmware_issue", 0),
-                "collision_errors": error_classes.get("collision_error", 0)
+                "collision_errors": error_classes.get("collision_error", 0),
+                "sensor_error":     error_classes.get("sensor_error", 0),
+                "voltage_warning":  error_classes.get("voltage_warning", 0),
+                "communication_error": error_classes.get("communication_error", 0),
+                "firmware_issue":   error_classes.get("firmware_issue", 0),
+                "collision_error":  error_classes.get("collision_error", 0)
             })
         plot_analysis(data)
+        plot_error_types(data)
+        # Ausgabe der Statistiken im Terminal       
 
         # Erstellen des erweiterten DataFrames
         enhanced_df = build_enhanced_dataframe(data)
@@ -248,6 +257,68 @@ def visualize(
         typer.echo("✅ Visualisierungen wurden erfolgreich erstellt und gespeichert.")
 
 
+        # Fehlerzeitverlauf analysieren
+@app.command()
+def visualize_errors(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt"
+):
+    """Visualisiert den Fehlerzeitverlauf einer Logdatei mit Zeitstempeln und Fehlerarten."""
+    if not os.path.exists(filepath):
+        print(f"Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+
+    # Info-Zeilen ggf. filtern
+    df = df[df["error_type"] != "info"]
+
+    # Zeitverlauf plotten
+    plot_error_timecourse(df)
+
+
+
+@app.command()
+def visualize_errors_all(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt"
+):
+    """
+    Führt vollständige Fehlerzeit-Visualisierung aus (Balken, Linie, Heatmap).
+    """
+    if not os.path.exists(filepath):
+        print(f"Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    df = df[df["error_type"] != "info"]
+
+    plot_error_timecourse(df)
+    plot_error_heatmap(df)
+
+@app.command()
+def generate_error_report(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt"
+):
+    """
+    Erstellt vollständige Fehlerauswertung inkl. PDF-Report.
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    df = df[df["error_type"] != "info"]
+
+    plot_error_timecourse(df)
+    export_error_report_to_pdf()
 
 if __name__ == "__main__":
     app()
