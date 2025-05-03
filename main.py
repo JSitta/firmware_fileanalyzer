@@ -1,8 +1,36 @@
-# main.py – Erste Erweiterung vom Einstiegspunkt, argparse wird ersetzt durch typer
-# zusätzlich wird die Existenz des Pfades bei analyze überprüft. Eingabe bei clean-text ist
-# interaktiv möglich.
-# Aufruf: python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. report_test.csv) --format csv
-#         python main.py analyze-pandas --dir <data-directory> --export <file_name> (z.B. stats.json) --format json
+# main.py – Stand: 02.05.2025
+# ------------------------------------------------------------
+# 🔧 CLI-Befehlsübersicht – Firmware File Analyzer
+#
+# Standardanalyse (Basisfunktionen)
+# ----------------------------------
+# python main.py analyze --dir ./data
+# python main.py analyze-pandas --dir ./data --export report.csv --format csv
+# python main.py analyze-pandas --dir ./data --export stats.json --format json
+# python main.py export-basic --dir ./data --output export.csv --format csv
+#
+# Interaktive Funktionen
+# -----------------------
+# python main.py clean-text
+# python main.py search-text --dir ./data "ERROR"
+#
+# Visualisierung & erweiterte Analyse
+# -----------------------------------
+# python main.py visualize --dir ./data --export summary.csv --alert-threshold 10
+# python main.py visualize-errors --filepath ./data/sensor_data_with_lots_errors.txt
+# python main.py visualize-errors-all --filepath ./data/sensor_data_with_lots_errors.txt
+#
+# Fehlerreports (Export & PDF)
+# -----------------------------
+# python main.py generate-error-report --filepath ./data/sensor_data_with_lots_errors.txt
+# python main.py generate-full-error-report --filepath ./data/sensor_data_with_lots_errors.txt
+# python main.py generate-error-report-zip --filepath ./data/sensor_data_with_lots_errors.txt
+#
+# Kritische Fehlerzeitfenster filtern
+# ------------------------------------
+# python main.py find-critical-errors --filepath ./data/sensor_data_with_lots_errors.txt --error-type firmware_issue --threshold 4
+# ------------------------------------------------------------
+
 
 import typer
 import logging
@@ -15,7 +43,8 @@ from src.text_analyzer import TextAnalyzer
 from src.visualizer import plot_analysis, plot_trends, plot_error_types
 from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
                                calculate_correlations, count_log_entries, classify_errors)
-from src.error_visualizer import plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf
+from src.error_visualizer import (plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf, export_report_as_zip,
+                                  detect_critical_error_windows, publish_reports_to_docs)
 from src.error_timeparser import classify_error_type, extract_timestamp, build_error_dataframe
 from typing import Optional
 from rich import print as rprint
@@ -319,6 +348,86 @@ def generate_error_report(
 
     plot_error_timecourse(df)
     export_error_report_to_pdf()
+
+@app.command()
+def generate_full_error_report(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt"
+):
+    """
+    Erstellt vollständige Fehleranalyse mit PDF-Report inklusive Heatmap und kritischer Zusammenfassung.
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    df = df[df["error_type"] != "info"]
+
+    plot_error_timecourse(df)
+    plot_error_heatmap(df)
+    export_error_report_to_pdf(df)
+
+@app.command()
+def generate_error_report_zip(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt"
+):
+    """
+    Erstellt vollständigen Fehlerbericht inkl. ZIP-Export aller Ausgabedateien.
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    df = df[df["error_type"] != "info"]
+
+    plot_error_timecourse(df)
+    plot_error_heatmap(df)
+    export_error_report_to_pdf(df)
+    export_report_as_zip()
+
+@app.command()
+def find_critical_errors(
+    filepath: str = "./data/sensor_data_with_lots_errors.txt",
+    error_type: str = "firmware_issue",
+    threshold: int = 3
+):
+    """
+    Zeigt alle Stunden, in denen ein bestimmter Fehlertyp häufiger als 'threshold' auftrat.
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        return
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    df = df[df["error_type"] != "info"]
+
+    filtered = detect_critical_error_windows(df, threshold=threshold)
+    result = filtered[filtered["error_type"] == error_type]
+
+    if result.empty:
+        print(f"Keine Zeitfenster mit mehr als {threshold} Vorkommen von '{error_type}' gefunden.")
+    else:
+        print(f"⚠️ Kritische Zeitfenster für '{error_type}' (≥ {threshold} Fehler):\n")
+        print(result.to_string(index=False))
+
+
+@app.command()
+def publish_docs():
+    """
+    Kopiert alle aktuellen Report-Dateien nach docs/reports zur Veröffentlichung.
+    """
+    publish_reports_to_docs()
+    
 
 if __name__ == "__main__":
     app()

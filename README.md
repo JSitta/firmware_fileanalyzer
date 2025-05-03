@@ -56,9 +56,32 @@ python main.py clean-text
 
 # Textsuche in allen .txt-Dateien
 python main.py search-text --dir ./data "ERROR"
-```
 
----
+## 🧭 CLI-Befehlsübersicht
+
+### 🔍 Standardanalyse
+```bash
+python main.py analyze --dir ./data
+python main.py analyze-pandas --dir ./data --export report.csv --format csv
+python main.py analyze-pandas --dir ./data --export stats.json --format json
+python main.py export-basic --dir ./data --output export.csv --format csv
+
+✨ Interaktive Funktionen
+
+python main.py clean-text
+python main.py search-text --dir ./data "ERROR"
+
+📊 Visualisierung & Analyse
+
+python main.py visualize --dir ./data --export summary.csv --alert-threshold 10
+python main.py visualize-errors --filepath ./data/sensor_data_with_lots_errors.txt
+python main.py visualize-errors-all --filepath ./data/sensor_data_with_lots_errors.txt
+
+📄 Fehlerreports & Export
+
+python main.py generate-error-report --filepath ./data/sensor_data_with_lots_errors.txt
+python main.py generate-full-error-report --filepath ./data/sensor_data_with_lots_errors.txt
+python main.py generate-error-report-zip --filepath ./data/sensor_data_with_lots_errors.txt
 
 ## 🧪 Tests ausführen
 

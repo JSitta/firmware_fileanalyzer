@@ -1,4 +1,6 @@
 import os
+import zipfile
+import shutil
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -78,8 +80,41 @@ def plot_error_heatmap(df, output_dir="./charts"):
     print(f"✅ Heatmap gespeichert unter: {os.path.join(heatmap_dir, 'error_time_heatmap.png')}")
     return heatpath
 
+def detect_critical_error_windows(df: pd.DataFrame, threshold: int = 5) -> pd.DataFrame:
+    """
+    Gibt alle Stunden + Fehlerarten zurück, bei denen die Fehleranzahl >= threshold ist.
+    """
+    df = df.copy()
+    df["hour"] = df["timestamp"].dt.floor("h")
+    grouped = df.groupby(["hour", "error_type"]).size().reset_index(name="count")
+    critical = grouped[grouped["count"] >= threshold]
+    return critical.sort_values(by=["hour", "error_type"])
 
-def export_error_report_to_pdf(output_dir="./charts/errors"):
+def append_critical_summary_to_pdf(df: pd.DataFrame, pdf: FPDF, threshold: int = 5):
+    """
+    Fügt dem PDF eine Tabelle mit den kritischsten Fehlerzeiträumen hinzu.
+    """
+    critical_df = detect_critical_error_windows(df, threshold)
+    if critical_df.empty:
+        return
+
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Kritische Fehlerzeiträume (ab Schwelle)", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(50, 10, "Stunde", border=1)
+    pdf.cell(60, 10, "Fehlerart", border=1)
+    pdf.cell(30, 10, "Anzahl", border=1, ln=True)
+
+    for _, row in critical_df.iterrows():
+        pdf.cell(50, 10, str(row["hour"]), border=1)
+        pdf.cell(60, 10, row["error_type"], border=1)
+        pdf.cell(30, 10, str(row["count"]), border=1, ln=True)
+
+
+
+def export_error_report_to_pdf(df: pd.DataFrame, output_dir="./charts/errors"):
     """
     Erstellt ein einfaches PDF mit Deckblatt, Zusammenfassung und eingebetteten Fehlerplots.
     """
@@ -102,9 +137,11 @@ def export_error_report_to_pdf(output_dir="./charts/errors"):
         "- Fehlerverteilung pro Stunde (gestapelt)\n"
         "- Fehlertrends über die Zeit (Linienverlauf)\n"
         "- Heatmap nach Fehlerart und Zeitintervall\n"
+        "- Kritische Zeitfenster mit hoher Fehlerrate\n"
     ))
 
-    # Geordnete Plots mit sinnvollen Titeln
+    # Geordnete Plots mit sinnvollen Titeln, hier kommen nur Bilddateien rein, die vierte Seite ist eine Tabelle
+    # und wird weiter unten mit appen_critical_summary_to_pdf ergänzt
     plots = {
         "error_time_stacked_bar.png": "Fehleranzahl pro Stunde (gestapelt)",
         "error_time_lines.png": "Fehlertrends über die Zeit",
@@ -120,6 +157,44 @@ def export_error_report_to_pdf(output_dir="./charts/errors"):
             pdf.image(path, w=190)
             pdf.ln(10)
 
+    # Kritische Zeiträume ergänzen
+    append_critical_summary_to_pdf(df, pdf)
+
     report_path = os.path.join(output_dir, "fehlerreport.pdf")
     pdf.output(report_path)
     print(f"📄 PDF-Report gespeichert unter: {report_path}")
+
+
+def export_report_as_zip(output_dir: str = "./charts/errors", zip_name: str = "error_report_bundle.zip"):
+    """
+    Erstellt ein ZIP-Archiv aller relevanten Exportdateien im Reportverzeichnis.
+    """
+    zip_path = os.path.join(output_dir, zip_name)
+    with zipfile.ZipFile(zip_path, 'w') as zipf:
+        for filename in [
+            "fehlerreport.pdf",
+            "error_time_stacked_bar.png",
+            "error_time_lines.png",
+            "error_time_heatmap.png"
+        ]:
+            path = os.path.join(output_dir, filename)
+            if os.path.exists(path):
+                zipf.write(path, arcname=filename)
+    print(f"📦 ZIP-Archiv erstellt: {zip_path}")
+
+
+def publish_reports_to_docs(source_dir: str = "./charts/errors", target_dir: str = "./docs/reports"):
+    """
+    Kopiert alle Reportdateien aus dem Quellverzeichnis in ein öffentliches docs-Verzeichnis.
+    """
+    os.makedirs(target_dir, exist_ok=True)
+    exported_files = []
+    for filename in os.listdir(source_dir):
+        if filename.endswith(('.pdf', '.png', '.svg', '.zip')):
+            src = os.path.join(source_dir, filename)
+            dst = os.path.join(target_dir, filename)
+            shutil.copy2(src, dst)
+            exported_files.append(dst)
+    print(f"📁 Veröffentlichte Dateien:")
+    for path in exported_files:
+        print(f" → {path}")
