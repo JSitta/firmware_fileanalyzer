@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from fpdf import FPDF
 from datetime import datetime
+from src.error_timeparser import build_error_dataframe
 
 
 def plot_error_timecourse(df, output_dir="./charts"):
@@ -83,86 +84,62 @@ def plot_error_heatmap(df, output_dir="./charts"):
 def detect_critical_error_windows(df: pd.DataFrame, threshold: int = 5) -> pd.DataFrame:
     """
     Gibt alle Stunden + Fehlerarten zurück, bei denen die Fehleranzahl >= threshold ist.
+    Erwartet ein DataFrame mit Timestamp.
     """
+    if "timestamp" not in df.columns:
+        return pd.DataFrame()
     df = df.copy()
     df["hour"] = df["timestamp"].dt.floor("h")
     grouped = df.groupby(["hour", "error_type"]).size().reset_index(name="count")
     critical = grouped[grouped["count"] >= threshold]
     return critical.sort_values(by=["hour", "error_type"])
 
+
 def append_critical_summary_to_pdf(df: pd.DataFrame, pdf: FPDF, threshold: int = 5):
-    """
-    Fügt dem PDF eine Tabelle mit den kritischsten Fehlerzeiträumen hinzu.
-    """
     critical_df = detect_critical_error_windows(df, threshold)
     if critical_df.empty:
         return
-
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Kritische Fehlerzeiträume (ab Schwelle)", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=11)
-    pdf.cell(50, 10, "Stunde", border=1)
-    pdf.cell(60, 10, "Fehlerart", border=1)
-    pdf.cell(30, 10, "Anzahl", border=1, ln=True)
-
+    pdf.cell(0, 10, "Kritische Fehlerzeiträume", ln=1)
+    pdf.set_font("Arial", size=10)
     for _, row in critical_df.iterrows():
-        pdf.cell(50, 10, str(row["hour"]), border=1)
-        pdf.cell(60, 10, row["error_type"], border=1)
-        pdf.cell(30, 10, str(row["count"]), border=1, ln=True)
-
+        line = f"{row['hour']} - {row['error_type']} - {row['count']}x"
+        pdf.cell(0, 10, line, ln=1)
 
 
 def export_error_report_to_pdf(df: pd.DataFrame, output_dir="./charts/errors"):
-    """
-    Erstellt ein einfaches PDF mit Deckblatt, Zusammenfassung und eingebetteten Fehlerplots.
-    """
+    os.makedirs(output_dir, exist_ok=True)
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Deckblatt
     pdf.add_page()
-    pdf.set_font("Arial", "B", 20)
-    pdf.cell(200, 20, txt="Fehleranalyse-Report", ln=True, align="C")
-    pdf.set_font("Arial", size=14)
-    pdf.ln(10)
-    pdf.cell(200, 10, txt=f"Erstellt am: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
-    pdf.cell(200, 10, txt="Projekt: Firmware File Analyzer", ln=True, align="C")
-    pdf.ln(30)
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Fehleranalyse-Report", ln=1)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, txt=(
-        "Dieser Bericht enthält eine visuelle Auswertung der im Log erkannten Fehlerarten.\n"
-        "Enthalten sind:\n"
-        "- Fehlerverteilung pro Stunde (gestapelt)\n"
-        "- Fehlertrends über die Zeit (Linienverlauf)\n"
-        "- Heatmap nach Fehlerart und Zeitintervall\n"
-        "- Kritische Zeitfenster mit hoher Fehlerrate\n"
-    ))
+    pdf.cell(0, 10, f"Erstellt am: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1)
+    pdf.ln(10)
 
-    # Geordnete Plots mit sinnvollen Titeln, hier kommen nur Bilddateien rein, die vierte Seite ist eine Tabelle
-    # und wird weiter unten mit appen_critical_summary_to_pdf ergänzt
+    # Geordnete Plots mit sinnvollen Titeln
     plots = {
         "error_time_stacked_bar.png": "Fehleranzahl pro Stunde (gestapelt)",
         "error_time_lines.png": "Fehlertrends über die Zeit",
-        "error_time_heatmap.png": "Heatmap: Fehlerarten über Stunden"
+        "error_time_heatmap.png": "Heatmap: Fehlerarten über Stunden",
+        "error_comparison_barplot.png": "Vergleich: Fehleranzahl je Logdatei",
+        "error_comparison_heatmap.png": "Vergleich: Heatmap je Logdatei"
     }
-
     for image_file, title in plots.items():
         path = os.path.join(output_dir, image_file)
         if os.path.exists(path):
-            pdf.add_page()
-            pdf.set_font("Arial", "B", 14)
-            pdf.cell(0, 10, txt=title, ln=True)
-            pdf.image(path, w=190)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, title, ln=1)
+            pdf.image(path, w=180)
             pdf.ln(10)
 
-    # Kritische Zeiträume ergänzen
+    # Kritische Zeiträume ergänzen (nur wenn Zeitstempel vorhanden)
     append_critical_summary_to_pdf(df, pdf)
 
     report_path = os.path.join(output_dir, "fehlerreport.pdf")
     pdf.output(report_path)
-    print(f"📄 PDF-Report gespeichert unter: {report_path}")
+    print(f"✅ PDF-Report exportiert: {report_path}")
 
 
 def export_report_as_zip(output_dir: str = "./charts/errors", zip_name: str = "error_report_bundle.zip"):
@@ -198,3 +175,70 @@ def publish_reports_to_docs(source_dir: str = "./charts/errors", target_dir: str
     print(f"📁 Veröffentlichte Dateien:")
     for path in exported_files:
         print(f" → {path}")
+
+
+def compare_error_logs(directory: str) -> pd.DataFrame:
+    """
+    Vergleicht Fehlerarten über mehrere Logdateien in einem Verzeichnis.
+    Gibt eine Tabelle mit error_type, count und Dateiname zurück.
+    """
+    summary = []
+
+    for fname in os.listdir(directory):
+        if fname.endswith(".txt"):
+            fpath = os.path.join(directory, fname)
+            with open(fpath, encoding="utf-8") as f:
+                lines = f.readlines()
+            df = build_error_dataframe(lines)
+
+            if df.empty or "error_type" not in df.columns:
+                print(f"⚠️ Datei übersprungen (ungültig oder leer): {fname}")
+                continue
+
+            df = df[df["error_type"] != "info"]
+            counts = df["error_type"].value_counts().reset_index()
+            counts.columns = ["error_type", "count"]
+            counts["filename"] = fname
+            summary.append(counts)
+
+    if not summary:
+        return pd.DataFrame(columns=["filename", "error_type", "count"])
+
+    return pd.concat(summary, ignore_index=True)[["filename", "error_type", "count"]]
+
+
+def plot_error_comparison(df: pd.DataFrame, output_dir="./charts"):
+    """
+    Erstellt einen gruppierten Balkenplot zur Fehlerverteilung über mehrere Logdateien.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=df, x="error_type", y="count", hue="filename")
+    plt.title("Fehlerverteilung pro Logdatei")
+    plt.xlabel("Fehlerart")
+    plt.ylabel("Anzahl")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, "error_comparison_barplot.png")
+    plt.savefig(out_path)
+    plt.close()
+    print(f"✅ Vergleichsdiagramm gespeichert unter: {out_path}")
+
+
+def plot_error_heatmap_logs(df: pd.DataFrame, output_dir="./charts"):
+    """
+    Erstellt eine Heatmap der Fehlerarten pro Logdatei.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    pivot = df.pivot_table(index="filename", columns="error_type", values="count", fill_value=0)
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(pivot, annot=True, cmap="OrRd", fmt=".0f")
+    plt.title("Heatmap: Fehlerarten je Logdatei")
+    plt.xlabel("Fehlerart")
+    plt.ylabel("Logdatei")
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, "error_comparison_heatmap.png")
+    plt.savefig(out_path)
+    plt.close()
+    print(f"✅ Heatmap gespeichert unter: {out_path}")
+

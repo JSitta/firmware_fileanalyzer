@@ -44,7 +44,8 @@ from src.visualizer import plot_analysis, plot_trends, plot_error_types
 from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
                                calculate_correlations, count_log_entries, classify_errors)
 from src.error_visualizer import (plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf, export_report_as_zip,
-                                  detect_critical_error_windows, publish_reports_to_docs)
+                                  detect_critical_error_windows, publish_reports_to_docs, compare_error_logs,
+                                  plot_error_comparison, plot_error_heatmap_logs)
 from src.error_timeparser import classify_error_type, extract_timestamp, build_error_dataframe
 from typing import Optional
 from rich import print as rprint
@@ -427,7 +428,62 @@ def publish_docs():
     Kopiert alle aktuellen Report-Dateien nach docs/reports zur Veröffentlichung.
     """
     publish_reports_to_docs()
-    
+
+
+@app.command()
+def compare_logs(directory: str = "./data"):
+    """
+    Vergleicht Fehlerarten über mehrere Logdateien im angegebenen Verzeichnis.
+    """
+    df = compare_error_logs(directory)
+    print(df)
+
+@app.command()
+def plot_error_comparison_chart(directory: str = "./data"):
+    """
+    Erstellt einen gruppierten Balkenplot zur Fehlerverteilung pro Logdatei.
+    """
+    df = compare_error_logs(directory)
+    plot_error_comparison(df)
+
+@app.command()
+def plot_error_heatmap_chart(directory: str = "./data"):
+    """
+    Erstellt eine Heatmap der Fehlerarten über mehrere Logdateien.
+    """
+    df = compare_error_logs(directory)
+    plot_error_heatmap_logs(df)
+
+
+@app.command()
+def interactive_report():
+    """Geführter Ablauf zur Erstellung eines Fehler-Reports aus mehreren Logdateien."""
+    typer.echo("🧭 Interaktiver Reportgenerator gestartet")
+    directory = typer.prompt("📁 Verzeichnis mit Logdateien", default="./data")
+    df = compare_error_logs(directory)
+
+    if typer.confirm("🔍 Fehlervergleich anzeigen?"):
+        typer.echo(df)
+
+    if typer.confirm("📊 Gruppierten Balkenplot erstellen?"):
+        plot_error_comparison(df)
+
+    if typer.confirm("🔥 Heatmap erstellen?"):
+        plot_error_heatmap_logs(df)
+
+    if typer.confirm("📄 PDF-Report exportieren?"):
+        export_error_report_to_pdf(df)
+
+    if typer.confirm("🗜️ ZIP-Export erzeugen?"):
+        export_report_as_zip()
+
+    if typer.confirm("🌐 In docs/reports veröffentlichen?"):
+        publish_reports_to_docs()
+
+    typer.echo("✅ Interaktive Reportgenerierung abgeschlossen.")
+
+
+
 
 if __name__ == "__main__":
     app()
