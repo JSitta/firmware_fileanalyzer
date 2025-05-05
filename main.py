@@ -35,6 +35,7 @@
 import typer
 import logging
 import os
+import pandas as pd
 from src.text_tool import remove_whitespace, word_count
 from src.file_writer import export_to_csv, export_to_json
 from src.file_reader import read_text_file
@@ -59,22 +60,45 @@ setup_logger()
 
 @app.command()
 def analyze(
-    dir: str = typer.Option(
-        "./data",
-        "--dir",
-        "-d",
-        help="Pfad zum Verzeichnis mit .txt-Dateien"
-    )
+    dir: str = typer.Option("./data","--dir","-d",help="Pfad zum Verzeichnis mit .txt-Dateien"),
+    format: str = typer.Option("csv", help="Exportformat: csv oder json"),
+    export: Optional[str] = typer.Option(None, help="Pfad zur Exportdatei (optional)")
 ):
     """Analysiert ein Verzeichnis mit .txt-Dateien."""
-    if not os.path.exists(dir):
-        typer.echo(f"❌ Fehler: Verzeichnis nicht gefunden: {dir}")
-        raise typer.Exit(code=1)
+    all_entries = []
+    for fname in os.listdir(dir):
+        if fname.endswith(".txt"):
+            path = os.path.join(dir, fname)
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
+            lines = content.splitlines()
+            error_df = build_error_dataframe(lines)
+            if error_df.empty:
+                continue
+            error_df["source_file"] = fname
+            all_entries.append(error_df)
 
-    analyzer = TextAnalyzer(dir)
-    if analyzer.collect_files():
-        analyzer.analyze()
-        analyzer.report()
+    if not all_entries:
+        print("⚠️ Keine gültigen Fehlerdaten gefunden.")
+        raise typer.Exit()
+
+    result_df = pd.concat(all_entries)
+    print(result_df.head())
+
+
+    if export:
+        export_dir = os.path.dirname(export)
+        if export_dir:
+            os.makedirs(export_dir, exist_ok=True)
+        if format == "csv":
+            export_to_csv(result_df, export)
+            print(f"✅ CSV exportiert: {export}")
+        elif format == "json":
+            export_to_json(result_df, export)
+            print(f"✅ JSON exportiert: {export}")
+        else:
+            print(f"❌ Unbekanntes Format: {format}")
+
     
 @app.command()
 def search_text(

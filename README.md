@@ -1,4 +1,4 @@
-# Firmware File Analyzer, Stand: 30.04.2025
+# Firmware File Analyzer, Stand: 05.05.2025
 
 ![CI](https://github.com/JSitta/firmware_fileanalyzer/actions/workflows/test.yml/badge.svg)
 
@@ -34,64 +34,45 @@ firmware_fileanalyzer/
 └── backup/                    # Projekt-Backups
 ```
 
----
-
 ## ▶️ Verwendung
 
-```bash
-# Standardanalyse (mit Tabellen, Plots, Alerts)
-python main.py visualize --dir ./data
+# CLI-Befehlsübersicht – Firmware File Analyzer
 
-# Mit optionalem Fehlerquoten-Schwellenwert
-python main.py visualize --dir ./data --alert-threshold 5.0
+Dieses Skript bietet verschiedene Befehle zur Analyse, Bearbeitung und Visualisierung von Textdateien.
 
-# CSV-/JSON-Export ohne Pandas
-python main.py export-basic --dir ./data --output results.csv
+## Standardanalyse (Basisfunktionen)
 
-# Erweiterte Analyse + Export mit Pandas
-python main.py analyze-pandas --dir ./data --export results.json --format json
+### `analyze`,analyze-pandas, export-basic, clean-text, search-text, visualize, 
+### visualize-errors, visualize-errors-all
 
-# Interaktive Textbereinigung + Wortzählung
-python main.py clean-text
-
-# Textsuche in allen .txt-Dateien
-python main.py search-text --dir ./data "ERROR"
-
-## 🧭 CLI-Befehlsübersicht
-
-### 🔍 Standardanalyse
-```bash
-python main.py analyze --dir ./data
-python main.py analyze-pandas --dir ./data --export report.csv --format csv
-python main.py analyze-pandas --dir ./data --export stats.json --format json
-python main.py export-basic --dir ./data --output export.csv --format csv
-
-✨ Interaktive Funktionen
-
-python main.py clean-text
-python main.py search-text --dir ./data "ERROR"
-
-📊 Visualisierung & Analyse
-
-python main.py visualize --dir ./data --export summary.csv --alert-threshold 10
-python main.py visualize-errors --filepath ./data/sensor_data_with_lots_errors.txt
-python main.py visualize-errors-all --filepath ./data/sensor_data_with_lots_errors.txt
-
-📄 Fehlerreports & Export
-
-python main.py generate-error-report --filepath ./data/sensor_data_with_lots_errors.txt
-python main.py generate-full-error-report --filepath ./data/sensor_data_with_lots_errors.txt
-python main.py generate-error-report-zip --filepath ./data/sensor_data_with_lots_errors.txt
-
-## 🧪 Tests ausführen
 
 ```bash
-# Einzeltest
-python -m unittest tests/test_text_analyzer.py
+python main.py analyze --dir <Pfad> [--format <Format>] [--export <Exportdatei>]
+python main.py analyze-pandas --dir <Pfad> --export <Exportdatei> --format <Format>
+python main.py export-basic --dir <Pfad> --output <Zieldatei> --format <Format>
+python main.py clean-text [<Text>]
+python main.py search-text --dir <Pfad> <Suchbegriff>
+python main.py visualize --dir <Pfad> [--export <Exportdatei>] [--alert-threshold <Schwelle>]
+python main.py visualize-errors --filepath <Dateipfad>
+python main.py visualize-errors-all --filepath <Dateipfad>
 
-# Alle Tests (wenn erweitert)
-python -m unittest discover -s tests
-```
+## Fehlerreports (Export&PDF)
+
+python main.py generate-error-report --filepath <Dateipfad>
+python main.py generate-full-error-report --filepath <Dateipfad>
+python main.py generate-error-report-zip --filepath <Dateipfad>
+
+Kritische Fehlerzeitfenster filtern
+
+python main.py find-critical-errors --filepath <Dateipfad> --error-type <Fehlertyp> --threshold <Schwelle>
+
+Weitere Funktionen
+
+python main.py publish-docs
+python main.py compare-logs --directory <Verzeichnis>
+python main.py plot-error-comparison-chart --directory <Verzeichnis>
+python main.py plot-error-heatmap-chart --directory <Verzeichnis>
+python main.py interactive-report
 
 ---
 

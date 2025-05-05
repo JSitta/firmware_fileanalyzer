@@ -1,11 +1,14 @@
 # src/file_writer.py – Textdatei schreiben
 # src/file_writer.py – Exportfunktionen ohne pandas
 
+import pandas as pd
 import csv
 import json
 
-def export_to_csv(data: list[dict], path: str) -> None:
-    """Exportiert eine Liste von Dictionaries als CSV-Datei."""
+def export_to_csv(data, path: str) -> None:
+    """Exportiert Daten als CSV-Datei. Akzeptiert list[dict] oder pandas.DataFrame."""
+    if isinstance(data, pd.DataFrame):
+        data = data.to_dict(orient="records")
     if not data:
         print("⚠️ Keine Daten zum Exportieren (CSV).")
         return
@@ -19,15 +22,21 @@ def export_to_csv(data: list[dict], path: str) -> None:
     except Exception as e:
         print(f"❌ Fehler beim CSV-Export: {e}")
 
-def export_to_json(data: list[dict], path: str) -> None:
-    """Exportiert eine Liste von Dictionaries als JSON-Datei."""
+def export_to_json(data, path: str) -> None:
+    """Exportiert Daten als JSON-Datei. Akzeptiert list[dict] oder pandas.DataFrame."""
+    if isinstance(data, pd.DataFrame):
+        data = data.copy()
+        for col in data.select_dtypes(include=["datetime64[ns]"]):
+            data[col] = data[col].dt.strftime("%Y-%m-%d %H:%M:%S")
+        data = data.to_dict(orient="records")
+
     if not data:
         print("⚠️ Keine Daten zum Exportieren (JSON).")
         return
 
     try:
-        with open(path, mode='w', encoding='utf-8') as jsonfile:
-            json.dump(data, jsonfile, indent=2, ensure_ascii=False)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
         print(f"💾 JSON-Datei erfolgreich exportiert: {path}")
     except Exception as e:
         print(f"❌ Fehler beim JSON-Export: {e}")
