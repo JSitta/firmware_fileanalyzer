@@ -46,8 +46,9 @@ from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
                                calculate_correlations, count_log_entries, classify_errors)
 from src.error_visualizer import (plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf, export_report_as_zip,
                                   detect_critical_error_windows, publish_reports_to_docs, compare_error_logs,
-                                  plot_error_comparison, plot_error_heatmap_logs)
+                                  plot_error_comparison, plot_error_heatmap_logs, export_emba_report_to_pdf)
 from src.error_timeparser import classify_error_type, extract_timestamp, build_error_dataframe
+from src.emba_parser import (extract_summary_from_index, extract_cves_auto, extract_cves_from_f17, plot_top_cve_components)
 from typing import Optional
 from rich import print as rprint
 from rich.text import Text
@@ -506,6 +507,128 @@ def interactive_report():
 
     typer.echo("✅ Interaktive Reportgenerierung abgeschlossen.")
 
+
+@app.command()
+def analyze_emba(
+    filepath: str = typer.Option(..., help="Pfad zur index.html von EMBA"),
+    export: Optional[str] = typer.Option(None, help="Pfad zur Exportdatei (csv/json)")
+):
+    """Analysiert EMBA index.html und extrahiert relevante Sicherheitsergebnisse."""
+    from src.emba_parser import extract_summary_from_index
+
+    df = extract_summary_from_index(filepath)
+    print(df)
+
+    if export:
+        from src.file_writer import export_to_csv, export_to_json
+        if export.endswith(".csv"):
+            export_to_csv(df, export)
+        elif export.endswith(".json"):
+            export_to_json(df, export)
+        else:
+            print("❌ Nur .csv oder .json unterstützt.")
+
+
+@app.command()
+def analyze_emba_cves(
+    filepath: str = typer.Option(..., help="Pfad zur index.html oder f17_cve_bin_tool.html"),
+    export: Optional[str] = typer.Option(None, help="Exportpfad für CSV"),
+    min_cves: int = typer.Option(0, help="Minimale Anzahl CVEs für Filterung"),
+    min_exploits: int = typer.Option(0, help="Minimale Anzahl Exploits für Filterung")
+):
+    """
+    Extrahiert Komponenten-CVEs + Zusammenfassung aus EMBA HTML.
+    Optional filterbar nach minimaler Anzahl an CVEs und Exploits.
+    """
+    from src.emba_parser import extract_cves_auto, assign_risk_level, plot_risk_level_distribution
+    from src.file_writer import export_to_csv
+
+    components_df, summary_df = extract_cves_auto(filepath)
+
+    # 🔍 Filter anwenden
+    filtered_df = components_df[
+        (components_df["cves"] >= min_cves) &
+        (components_df["exploits"] >= min_exploits)
+    ]
+
+    filtered_df = assign_risk_level(filtered_df)
+    plot_risk_level_distribution(filtered_df)
+    #print("\n🔸 Risikostufenverteilung:\n")
+
+    print("🔹 Gefilterte Komponenten mit CVEs und Risikostufenverteilung:\n", filtered_df.head())
+    #print("\n🔸 CVE-Zusammenfassung:\n", summary_df.to_string(index=False))
+
+    if export:
+        export_to_csv(filtered_df, export)
+        
+
+
+"""
+@app.command()
+def generate_emba_report(
+    filepath: str = typer.Option(..., help="Pfad zur index.html oder f17_cve_bin_tool.html")
+):
+"""
+    #Erstellt einen EMBA-spezifischen PDF-Report mit CVE-Charts und Zusammenfassung.
+"""
+    
+    components_df, summary_df = extract_cves_auto(filepath)
+
+    chart_path = "./charts/emba_top_cves.png"
+    plot_top_cve_components(components_df, output_path=chart_path)
+    export_emba_report_to_pdf(summary_df, chart_path)
+"""
+
+@app.command()
+def generate_emba_report_full(
+    filepath: str = typer.Option(..., help="Pfad zur EMBA index.html"),
+):
+    """
+    Erstellt einen vollständigen PDF-Report mit Chart, CVE-Summary und Komponententabelle.
+
+    """
+    from src.emba_parser import extract_cves_auto, assign_risk_level, plot_top_cve_components, plot_risk_level_distribution
+    from src.error_visualizer import export_emba_report_to_pdf
+    
+    components_df, summary_df = extract_cves_auto(filepath)
+    components_df = assign_risk_level(components_df)
+
+    plot_top_cve_components(components_df)
+    plot_risk_level_distribution(components_df)
+
+    chart_path = "./charts/emba_top_cves.png"
+    pdf_path = "./charts/errors/emba_report_full.pdf"
+    export_emba_report_to_pdf(summary_df, chart_path, components_df, pdf_path)
+
+@app.command()
+def zip_emba_report(
+    basepath: str = typer.Option("./charts/errors", help="Verzeichnis mit EMBA-Reportdaten")
+):
+    """
+    Packt PDF, Chart und ggf. CSV-Dateien des EMBA-Reports in ein ZIP.
+    """
+    from src.error_visualizer import export_emba_report_zip
+
+    files = [
+        os.path.join(basepath, "emba_report_full.pdf"),
+        "./charts/emba_top_cves.png",
+        "emba_components.csv",
+        "emba_components_summary.csv"
+    ]
+    export_emba_report_zip(files)
+
+
+@app.command()
+def plot_emba_heatmap(
+    filepath: str = typer.Option(..., help="Pfad zur EMBA index.html oder f17_cve_bin_tool.html")
+):
+    """
+    Erstellt eine Heatmap der CVEs und Exploits pro Komponente.
+    """
+    from src.emba_parser import extract_cves_auto, plot_cve_heatmap
+
+    components_df, _ = extract_cves_auto(filepath)
+    plot_cve_heatmap(components_df)
 
 
 

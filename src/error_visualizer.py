@@ -242,3 +242,106 @@ def plot_error_heatmap_logs(df: pd.DataFrame, output_dir="./charts"):
     plt.close()
     print(f"✅ Heatmap gespeichert unter: {out_path}")
 
+def export_emba_report_to_pdf(summary_df, chart_path, components_df=None, output_path="./charts/errors/emba_report_full.pdf"):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    from src.emba_parser import append_risk_summary_table, generate_risk_explanation, append_risk_explanations_sorted
+    # PDF-Report erstellen
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "EMBA Sicherheitsauswertung", ln=1)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, f"Erstellt am: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1)
+    pdf.ln(5)
+
+    # CVE-Zusammenfassung
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "CVE-Zusammenfassung", ln=1)
+    pdf.set_font("Arial", size=10)
+    for _, row in summary_df.iterrows():
+        pdf.cell(0, 8, row["summary"], ln=1)
+
+    # Chart einbinden
+    if os.path.exists(chart_path):
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Top 10 CVE-Komponenten", ln=1)
+        pdf.image(chart_path, w=180)
+
+    # Komponententabelle
+    if components_df is not None and not components_df.empty:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Komponententabelle mit Risikobewertung", ln=1)
+        pdf.set_font("Arial", "B", 9)
+
+        # Spaltenüberschriften
+        col_widths = [48, 28, 18, 20, 25]  # in mm
+        headers = ["Komponente", "Version", "CVEs", "Exploits", "Risikostufe"]
+
+        for i, header in enumerate(headers):
+            pdf.cell(col_widths[i], 8, header, border=1, align="L")
+        pdf.ln()
+
+        pdf.set_font("Arial", size=9)
+        for _, row in components_df.iterrows():
+            values = [
+                str(row["component"])[:32],
+                str(row["version"]),
+                str(row["cves"]),
+                str(row["exploits"]),
+                str(row["risk_level"])
+            ]
+            for i, val in enumerate(values):
+                pdf.cell(col_widths[i], 6, val, border=1, align="L")
+            pdf.ln()
+
+    # Nach der Tabelle oder auf neuer Seite:
+    append_risk_summary_table(pdf, components_df)
+    
+    # Risikobewertung, Regelbasierte Erklärung
+
+    if pdf.get_y() > 250:
+        pdf.add_page()
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Lokale Risikoanalyse kritischer Komponenten", ln=1)
+    pdf.set_font("Arial", size=10)
+
+    for _, row in components_df[components_df["risk_score"] >= 7].iterrows():
+        text = generate_risk_explanation(row)
+        pdf.multi_cell(0, 6, text, border=0)
+        pdf.ln(2)
+
+    # Am Ende vor pdf.output(...) einfügen:
+    risk_chart = "./charts/emba_risk_distribution.png"
+    if os.path.exists(risk_chart):
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Verteilung der Risikostufen", ln=1)
+        pdf.image(risk_chart, w=180)
+        pdf.ln(10)
+
+    append_risk_explanations_sorted(pdf, components_df)
+
+    pdf.output(output_path)
+    print(f"📄 PDF-Report gespeichert unter: {output_path}")
+
+def export_emba_report_zip(
+    files: list[str],
+    output_zip: str = "./charts/errors/emba_report_bundle.zip"
+):
+    os.makedirs(os.path.dirname(output_zip), exist_ok=True)
+
+    with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for fpath in files:
+            if os.path.exists(fpath):
+                arcname = os.path.basename(fpath)
+                zipf.write(fpath, arcname=arcname)
+                print(f"📎 Hinzugefügt: {arcname}")
+            else:
+                print(f"⚠️ Datei nicht gefunden und übersprungen: {fpath}")
+
+    print(f"📦 ZIP-Archiv erstellt: {output_zip}")
+
