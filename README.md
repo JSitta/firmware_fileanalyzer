@@ -116,3 +116,18 @@ openpyxl>=3.1.0
 Das Projekt ist voll einsatzbereit zur Analyse textbasierter Logdaten im Firmware-/Robotik-Kontext, modular erweiterbar, versioniert und dokumentiert.
 
 Für den produktiven Einsatz oder als Bewerbungsreferenz geeignet.
+
+## 🖼️ GUI-Modul (Streamlit-basiert)
+
+Seit Mai 2025 ist eine experimentelle Benutzeroberfläche verfügbar, mit der man über den Browser folgende Funktionen nutzen kann:
+
+- 📂 Logfile-Upload per Drag & Drop oder Dateiwahl
+- 📊 Fehlerarten-Analyse als Tabelle & Diagramm
+- 📋 Automatische Deployment-Entscheidung (akzeptiert / blockiert)
+- 📄 PDF-Export mit manuell oder automatisch vergebenem Dateinamen
+- 🔁 "Neue Datei analysieren"-Button (zurücksetzen)
+- 🚪 Beenden-Button (beendet Streamlit-Prozess + CLI)
+
+### Starten der GUI (lokal):
+```bash
+python main.py gui-loganalyzer

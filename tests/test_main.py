@@ -7,7 +7,8 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 # Pfad zum src-Verzeichnis hinzufügen, damit Imports funktionieren
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from main import app  # Importiere die Typer-App
 from src.file_reader import read_text_file
