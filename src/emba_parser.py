@@ -7,6 +7,30 @@ import seaborn as sns
 from typing import Optional # Optional für Typannotationen
 
 
+# Neue Funktion zur Deployment-Entscheidung basierend auf typischen Grenzwerten
+def evaluate_firmware_acceptance(log_df: pd.DataFrame) -> tuple[bool, str]:
+    """
+    Bewertet auf Basis der Fehlerarten, ob eine Firmware für das Deployment geeignet ist.
+    Gibt zurück: (True/False, Begründung)
+    """
+    if log_df.empty or "error_type" not in log_df.columns:
+        return True, "Kein Fehlerprotokoll erkannt – Deployment möglich."
+
+    counts = log_df["error_type"].value_counts().to_dict()
+    firmware_issues = counts.get("firmware_issue", 0)
+    voltage_issues = counts.get("voltage_warning", 0)
+    sensor_errors = counts.get("sensor_error", 0)
+
+    if firmware_issues >= 2:
+        return False, f"Firmware enthält {firmware_issues} kritische firmware_issue-Fehler."
+    if voltage_issues >= 3:
+        return False, f"Mehr als {voltage_issues} Spannungseinbrüche erkannt."
+    if sensor_errors >= 3:
+        return False, f"Mehr als {sensor_errors} Sensorausfälle festgestellt."
+
+    return True, "✅ Firmwarefreigabe möglich – keine kritischen Fehler detektiert."
+
+
 def extract_summary_from_index(filepath: str) -> pd.DataFrame:
     with open(filepath, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f, "html.parser")

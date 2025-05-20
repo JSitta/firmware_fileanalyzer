@@ -184,6 +184,34 @@ def analyze_pandas(
         analyzer.report_pandas(export_path=export, file_format=format)
 
 @app.command()
+def check_firmware_status(
+    filepath: str = typer.Option(..., help="Pfad zur Logdatei (.txt) mit Zeitstempeln und Fehlern")
+):
+    """
+    Prüft automatisch, ob die Firmware anhand des Fehlerlogs für das Deployment geeignet ist.
+    """
+    from src.error_timeparser import build_error_dataframe
+    from src.emba_parser import evaluate_firmware_acceptance
+
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        raise typer.Exit()
+
+    with open(filepath, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    df = build_error_dataframe(lines)
+    status, reason = evaluate_firmware_acceptance(df)
+
+    print("\n📋 Deployment-Entscheidung:")
+    if status:
+        print("✅ Firmware FREIGEGEBEN")
+    else:
+        print("❌ Firmware BLOCKIERT")
+    print(f"Begründung: {reason}")
+
+
+@app.command()
 def export_basic(
     dir: str = typer.Option("./data", "--dir", "-d", help="Verzeichnis mit .txt-Dateien"),
     output: str = typer.Option("export_light.csv", "--output", "-o", help="Ziel-Dateiname"),
@@ -629,6 +657,16 @@ def plot_emba_heatmap(
 
     components_df, _ = extract_cves_auto(filepath)
     plot_cve_heatmap(components_df)
+
+@app.command()
+def gui_loganalyzer():
+    """
+    Startet die Streamlit-GUI zur Logfile-Analyse.
+    """
+    import subprocess
+    import sys
+    subprocess.run(["streamlit", "run", "experimental/gui/gui_streamlit_loganalyzer.py"])
+    
 
 
 

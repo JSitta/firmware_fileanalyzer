@@ -108,8 +108,8 @@ def append_critical_summary_to_pdf(df: pd.DataFrame, pdf: FPDF, threshold: int =
         pdf.cell(0, 10, line, ln=1)
 
 
-def export_error_report_to_pdf(df: pd.DataFrame, output_dir="./charts/errors"):
-    os.makedirs(output_dir, exist_ok=True)
+def export_error_report_to_pdf(df: pd.DataFrame, output_path: str = "./charts/errors/fehlerreport.pdf" ):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -126,6 +126,7 @@ def export_error_report_to_pdf(df: pd.DataFrame, output_dir="./charts/errors"):
         "error_comparison_barplot.png": "Vergleich: Fehleranzahl je Logdatei",
         "error_comparison_heatmap.png": "Vergleich: Heatmap je Logdatei"
     }
+    output_dir = os.path.dirname(output_path)
     for image_file, title in plots.items():
         path = os.path.join(output_dir, image_file)
         if os.path.exists(path):
@@ -137,9 +138,9 @@ def export_error_report_to_pdf(df: pd.DataFrame, output_dir="./charts/errors"):
     # Kritische Zeiträume ergänzen (nur wenn Zeitstempel vorhanden)
     append_critical_summary_to_pdf(df, pdf)
 
-    report_path = os.path.join(output_dir, "fehlerreport.pdf")
-    pdf.output(report_path)
-    print(f"✅ PDF-Report exportiert: {report_path}")
+    
+    pdf.output(output_path)
+    print(f"✅ PDF-Report exportiert: {output_path}")
 
 
 def export_report_as_zip(output_dir: str = "./charts/errors", zip_name: str = "error_report_bundle.zip"):
