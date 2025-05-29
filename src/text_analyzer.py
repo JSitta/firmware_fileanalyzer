@@ -89,14 +89,12 @@ class TextAnalyzer:
             print(f"- Zeichen: {avg_chars:.2f}")
             print(f"- Bytes: {avg_bytes:.2f}")
 
-# Ergänzung mit pandas - python analysis data system -   
-    
     def report_pandas(self, export_path="report.csv", file_format="csv"):
         """Erweiterte Statistik mit pandas – als CSV oder JSON, inkl. Filter & Diagramm"""
         try:
             import pandas as pd
             import matplotlib
-            matplotlib.use("Agg")  # Verhindert GUI-Backend für CI/CD
+            matplotlib.use("Agg")  # Headless-Betrieb für CI/CD
             import matplotlib.pyplot as plt
         except ImportError:
             print("📦 Hinweis: pandas oder matplotlib ist nicht installiert.")
@@ -117,7 +115,7 @@ class TextAnalyzer:
         top_words = df.sort_values("words", ascending=False).head(3)
         print(top_words[["filename", "words"]].to_string(index=False))
 
-        # 📈 Diagramm anzeigen
+        # 📈 Diagramm anzeigen (für CI deaktiviert)
         try:
             plt.figure(figsize=(8, 4))
             df_sorted = df.sort_values("words", ascending=False)
@@ -127,18 +125,20 @@ class TextAnalyzer:
             plt.xlabel("Dateiname")
             plt.xticks(rotation=45, ha="right")
             plt.tight_layout()
-            #plt.show() # für CI deaktiviert
+
+            if os.getenv("CI") != "true":
+                plt.show()
         except Exception as e:
             print(f"⚠️ Konnte Diagramm nicht anzeigen: {e}")
 
-        # 📆 Exportieren
+        # 💾 Exportieren
         try:
             if file_format.lower() == "json":
                 df.to_json(export_path, orient="records", indent=2)
             else:
                 df.to_csv(export_path, index=False)
 
-            print(f"📆 Exportiert nach: {export_path}")
+            print(f"💾 Exportiert nach: {export_path}")
 
             # Windows-spezifisch absichern:
             import platform
@@ -152,4 +152,3 @@ class TextAnalyzer:
 
         except Exception as e:
             print(f"⚠️ Export oder Öffnen fehlgeschlagen: {e}")
-
