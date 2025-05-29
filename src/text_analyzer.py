@@ -95,6 +95,8 @@ class TextAnalyzer:
         """Erweiterte Statistik mit pandas – als CSV oder JSON, inkl. Filter & Diagramm"""
         try:
             import pandas as pd
+            import matplotlib
+            matplotlib.use("Agg")  # Verhindert GUI-Backend für CI/CD
             import matplotlib.pyplot as plt
         except ImportError:
             print("📦 Hinweis: pandas oder matplotlib ist nicht installiert.")
