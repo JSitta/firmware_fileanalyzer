@@ -25,6 +25,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=." >> $GITHUB_ENV
+
       - name: Run tests with pytest
         run: |
           pytest tests/ --maxfail=5 --disable-warnings -v

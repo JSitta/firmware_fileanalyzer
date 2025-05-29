@@ -57,10 +57,10 @@ class TestPDFExport(unittest.TestCase):
         })
 
     def test_pdf_created(self):
-        export_error_report_to_pdf(self.df, output_dir=self.test_dir)
-        path = os.path.join(self.test_dir, "fehlerreport.pdf")
-        self.assertTrue(os.path.isfile(path))
-        self.assertGreater(os.path.getsize(path), 1000)  # rudimentäre Prüfung auf „echten Inhalt“
+        pdf_path = os.path.join(self.test_dir, "test_report.pdf")
+        export_error_report_to_pdf(self.df, output_path=pdf_path)
+        self.assertTrue(os.path.isfile(pdf_path))
+        self.assertGreater(os.path.getsize(pdf_path), 1000)  # rudimentäre Prüfung auf „echten Inhalt“
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)

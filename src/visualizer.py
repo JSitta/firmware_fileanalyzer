@@ -71,7 +71,10 @@ def plot_error_types(data, output_dir="./charts"):
         'voltage_warning',
         'communication_error',
         'firmware_issue',
-        'collision_error'
+        'collision_error',
+        'overheating_warning'
+        'low_voltage_warning'
+        #'other_errors'
     ]
     # Sicherstellen, dass alle Spalten vorhanden sind
     for et in error_types:

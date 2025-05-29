@@ -1,4 +1,4 @@
-# main.py – Stand: 02.05.2025
+# main.py – Stand: 23.05.2025
 # ------------------------------------------------------------
 # 🔧 CLI-Befehlsübersicht – Firmware File Analyzer
 #
@@ -36,16 +36,18 @@ import typer
 import logging
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 from src.text_tool import remove_whitespace, word_count
 from src.file_writer import export_to_csv, export_to_json
 from src.file_reader import read_text_file
 from src.log_util import setup_logger
 from src.text_analyzer import TextAnalyzer
-from src.visualizer import plot_analysis, plot_trends, plot_error_types
-from src.data_analysis import (build_enhanced_dataframe, save_dataframe,
-                               calculate_correlations, count_log_entries, classify_errors)
+from src.visualizer import (plot_analysis, plot_trends, plot_error_types)
+from src.data_analysis import (build_enhanced_dataframe, save_dataframe, detect_voltage_warnings, parse_log_to_dataframe,
+                               detect_threshold_warnings, calculate_correlations, count_log_entries, classify_errors)
 from src.error_visualizer import (plot_error_timecourse, plot_error_heatmap, export_error_report_to_pdf, export_report_as_zip,
-                                  detect_critical_error_windows, publish_reports_to_docs, compare_error_logs,
+                                  detect_critical_error_windows, publish_reports_to_docs, compare_error_logs, compare_custom_error_logs,
                                   plot_error_comparison, plot_error_heatmap_logs, export_emba_report_to_pdf)
 from src.error_timeparser import classify_error_type, extract_timestamp, build_error_dataframe
 from src.emba_parser import (extract_summary_from_index, extract_cves_auto, extract_cves_from_f17, plot_top_cve_components)
@@ -260,6 +262,8 @@ def visualize(
             text = read_text_file(path)
             errors, warnings, infos = count_log_entries(text) if text else (0, 0, 0)
             error_classes = classify_errors(text) if text else {}
+            threshold_classes = detect_threshold_warnings(text) if text else {}
+            voltage_classes = detect_voltage_warnings(text) if text else {}
 
             # Berechnung der Statistiken
             data.append({
@@ -280,7 +284,9 @@ def visualize(
                 "voltage_warning":  error_classes.get("voltage_warning", 0),
                 "communication_error": error_classes.get("communication_error", 0),
                 "firmware_issue":   error_classes.get("firmware_issue", 0),
-                "collision_error":  error_classes.get("collision_error", 0)
+                "collision_error":  error_classes.get("collision_error", 0),
+                "overheating_warning": threshold_classes.get("overheating_warning", 0),
+                "low_voltage_warning": voltage_classes.get("low_voltage_warning", 0)
             })
         plot_analysis(data)
         plot_error_types(data)
@@ -658,15 +664,158 @@ def plot_emba_heatmap(
     components_df, _ = extract_cves_auto(filepath)
     plot_cve_heatmap(components_df)
 
+
+import subprocess
+import sys
+import os
+
 @app.command()
 def gui_loganalyzer():
     """
-    Startet die Streamlit-GUI zur Logfile-Analyse.
+    Startet die Streamlit GUI aus dem ./experimental/gui/ Verzeichnis
     """
-    import subprocess
-    import sys
-    subprocess.run(["streamlit", "run", "experimental/gui/gui_streamlit_loganalyzer.py"])
+    script_path = os.path.join("experimental", "gui", "gui_streamlit_loganalyzer_updated.py")
+    subprocess.run([sys.executable, "-m", "streamlit", "run", script_path], check=True)
     
+@app.command()
+def visualize_structured(filepath: str):
+    """
+    Visualisiert Fehlerzeitverlauf mit automatisch klassifizierten Fehlerarten (inkl. custom_regex).
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        raise typer.Exit()
+
+    with open(filepath, encoding="utf-8") as f:
+        text = f.read()
+
+    df = parse_log_to_dataframe(text, classify=True)
+
+    if df.empty:
+        print("⚠️ Keine gültigen Logeinträge erkannt.")
+        return
+
+    console = Console()
+    console.print(f"📊 Geladene Einträge: {len(df)}")
+    console.print("🎨 Starte Zeitverlauf...")
+
+    plot_error_timecourse(df)
+
+    console.print("✅ Fertig.")
+
+
+
+@app.command()
+def compare_custom(directory: str = "./data"):
+    """
+    Vergleicht benutzerdefinierte Fehlerarten über alle Logdateien im Verzeichnis.
+    """
+    df = compare_custom_error_logs(directory)
+    if df.empty:
+        print("⚠️ Keine Fehlerdaten erkannt.")
+        return
+    
+    
+    print("📊 Vergleich der Fehlerarten pro Datei:")
+    print(df.to_string(index=False))
+
+    # Visualisierung als gruppierter Balkenplot
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=df, x="error_type", y="count", hue="filename")
+    plt.title("Benutzerdefinierte Fehlerverteilung pro Logdatei")
+    plt.xlabel("Fehlerart")
+    plt.ylabel("Anzahl")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    os.makedirs("./charts/custom", exist_ok=True)
+    outpath = "./charts/custom/error_comparison_custom.png"
+    plt.savefig(outpath)
+    plt.close()
+    print(f"✅ Diagramm gespeichert unter: {outpath}")
+
+    # Heatmap erzeugen
+    pivot = df.pivot_table(index="filename", columns="error_type", values="count", fill_value=0)
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(pivot, annot=True, fmt=".0f", cmap="YlGnBu")
+    plt.title("Heatmap: Fehlerarten je Logdatei")
+    plt.xlabel("Fehlerart")
+    plt.ylabel("Logdatei")
+    plt.tight_layout()
+    heat_path = "./charts/custom/error_comparison_heatmap_custom.png"
+    plt.savefig(heat_path)
+    plt.close()
+    print(f"✅ Heatmap gespeichert unter: {heat_path}")
+
+    # PDF erstellen
+    from fpdf import FPDF
+    pdf_path = "./charts/custom/error_comparison_report.pdf"
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Vergleichsbericht - Fehlerarten", ln=1)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, "Automatisch generiert aus Loganalyse", ln=1)
+    pdf.ln(5)
+
+    for title, path in [("Balkenplot: Fehlerarten pro Datei", outpath), ("Heatmap: Fehlerarten je Logdatei", heat_path)]:
+        if os.path.exists(path):
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, title, ln=1)
+            pdf.image(path, w=180)
+            pdf.ln(5)
+
+    pdf.output(pdf_path, "F")
+    print(f"📄 PDF-Bericht gespeichert unter: {pdf_path}")
+
+
+@app.command()
+def show_log_summary(filepath: str):
+    """
+    Zeigt Zusammenfassung und vorgeschlagene Klassifikatoren aus einer Logdatei.
+    """
+    if not os.path.exists(filepath):
+        print(f"❌ Datei nicht gefunden: {filepath}")
+        raise typer.Exit()
+
+    with open(filepath, encoding="utf-8") as f:
+        text = f.read()
+
+    df = parse_log_to_dataframe(text, classify=False)
+
+    if df.empty:
+        print("⚠️ Keine Logzeilen erkannt.")
+        raise typer.Exit()
+
+    console = Console()
+    console.print(f"\n📊 [bold]Anzahl erkannter Zeilen:[/] {len(df)}")
+
+    if "suggested_classes" in df.attrs:
+        console.print("\n🧠 [bold green]Vorgeschlagene Fehlergruppen basierend auf den häufigsten Nachrichtentypen:[/]")
+        for k, v in df.attrs["suggested_classes"].items():
+            console.print(f" • [cyan]{k}[/cyan] → [magenta]{v}x[/magenta]")
+    else:
+        print("(Keine Vorschläge verfügbar)")
+
+@app.command()
+def generate_custom_patterns(
+    json_file: str = typer.Argument("./charts/streamlit_exports/suggested_classes.json"),
+    output_file: str = typer.Argument("./src/custom_patterns_generated.py")
+):
+    from src.custom_pattern_loader import load_custom_patterns
+    from src.generate_custom_pattern import generate_py_module
+    from pathlib import Path
+    """
+    Generiert ein Python-Modul mit CUSTOM_PATTERNS aus einer suggested_classes.json-Datei.
+    """
+    json_path = Path(json_file)
+    if not json_path.exists():
+        print(f"❌ Datei nicht gefunden: {json_file}")
+        raise typer.Exit(1)
+
+    patterns = load_custom_patterns(json_path)
+    generate_py_module(patterns, output_file)
+
 
 
 

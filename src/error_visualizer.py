@@ -1,12 +1,57 @@
 import os
 import zipfile
 import shutil
+import itertools
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import seaborn as sns
 from fpdf import FPDF
 from datetime import datetime
 from src.error_timeparser import build_error_dataframe
+from src.custom_classifier import classify_custom_error
+
+def export_suggested_classes(df, output_path):
+    """Exportiert die suggested_classes aus einem DataFrame nach JSON."""
+    if hasattr(df, 'attrs') and "suggested_classes" in df.attrs:
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(df.attrs["suggested_classes"], f, indent=2, ensure_ascii=False)
+        print(f"🧠 Vorschläge gespeichert unter: {output_path}")
+
+
+def compare_custom_error_logs(directory: str) -> pd.DataFrame:
+    """
+    Vergleicht benutzerdefinierte Fehlerarten über mehrere Logdateien.
+    Gibt eine Tabelle mit error_type, count und Dateiname zurück.
+    """
+    summary = []
+    for fname in os.listdir(directory):
+        if fname.endswith(".txt"):
+            path = os.path.join(directory, fname)
+            with open(path, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            records = []
+            for line in lines:
+                if "[ERROR]" in line:
+                    timestamp_match = pd.to_datetime(line[:19], errors='coerce')
+                    error_type = classify_custom_error(line)
+                    if pd.notnull(timestamp_match):
+                        records.append({"timestamp": timestamp_match, "error_type": error_type})
+
+            if records:
+                df = pd.DataFrame(records)
+                df["filename"] = fname
+                grouped = df.groupby(["filename", "error_type"]).size().reset_index(name="count")
+                summary.append(grouped)
+
+    if summary:
+        return pd.concat(summary, ignore_index=True)
+    else:
+        return pd.DataFrame(columns=["filename", "error_type", "count"])
+
+
 
 
 def plot_error_timecourse(df, output_dir="./charts"):
@@ -16,6 +61,11 @@ def plot_error_timecourse(df, output_dir="./charts"):
     time_dir = os.path.join(output_dir, "errors")
     os.makedirs(time_dir, exist_ok=True)
 
+    if "timestamp" not in df.columns or "error_type" not in df.columns:
+        print("⚠️ DataFrame enthält nicht die erwarteten Spalten 'timestamp' und 'error_type'.")
+        return
+
+    df = df.copy()
     df["hour"] = df["timestamp"].dt.floor("h")
     grouped = df.groupby(["hour", "error_type"]).size().unstack(fill_value=0)
 
@@ -26,8 +76,15 @@ def plot_error_timecourse(df, output_dir="./charts"):
         "firmware_issue": "purple",
         "collision_error": "green",
         "generic_error": "gray",
+        "overheating_warning": "brown",
+        "low_voltage_warning": "pink"
     }
-    colorlist = [farben[col] for col in grouped.columns if col in farben]
+    color_cycle = itertools.cycle(mcolors.TABLEAU_COLORS)
+    for col in grouped.columns:
+        if col not in farben:
+            farben[col] = next(color_cycle)
+    
+    colorlist = [farben.get(col, "gray") for col in grouped.columns]
 
     # Gestapelter Balkenplot
     ax1 = grouped.plot(kind="bar", stacked=True, figsize=(14, 6), color=colorlist)
@@ -55,7 +112,33 @@ def plot_error_timecourse(df, output_dir="./charts"):
     plt.close()
 
     print(f"✅ Zeitverlauf-Charts gespeichert unter: {time_dir}")
+
+# PDF-Export
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Fehleranalyse - Zeitverlauf", ln=1)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, f"Generiert am: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1)
+    pdf.ln(10)
+
+    for title, path in [("Fehleranzahl pro Stunde (gestapelt)", barpath), ("Fehlertrends über die Zeit", linepath)]:
+        if os.path.exists(path):
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, title, ln=1)
+            pdf.image(path, w=180)
+            pdf.ln(5)
+
+    pdf_path = os.path.join(time_dir, "error_timecourse_report.pdf")
+    pdf.output(pdf_path)
+    print(f"📄 PDF-Report erstellt: {pdf_path}")
+
+    # Optional: suggested_classes exportieren
+    suggestion_path = os.path.join(time_dir, "suggested_classes.json")
+    export_suggested_classes(df, suggestion_path)
+
     return barpath, linepath
+
 
 
 def plot_error_heatmap(df, output_dir="./charts"):
@@ -123,6 +206,8 @@ def export_error_report_to_pdf(df: pd.DataFrame, output_path: str = "./charts/er
         "error_time_stacked_bar.png": "Fehleranzahl pro Stunde (gestapelt)",
         "error_time_lines.png": "Fehlertrends über die Zeit",
         "error_time_heatmap.png": "Heatmap: Fehlerarten über Stunden",
+        "error_stacked_bar.png": "Streamlit: Fehler nach Typ",
+        "error_heatmap.png": "Streamlit: Heatmap über Zeit",
         "error_comparison_barplot.png": "Vergleich: Fehleranzahl je Logdatei",
         "error_comparison_heatmap.png": "Vergleich: Heatmap je Logdatei"
     }

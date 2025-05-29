@@ -1,4 +1,4 @@
-# Firmware File Analyzer, Stand: 05.05.2025
+# Firmware File Analyzer, Stand: 20.05.2025
 
 ![CI](https://github.com/JSitta/firmware_fileanalyzer/actions/workflows/test.yml/badge.svg)
 
