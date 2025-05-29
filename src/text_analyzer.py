@@ -1,4 +1,5 @@
 # Modul: TextAnalyzer
+# Hier kommt die TextAnalyzer-Klasse hinein.
 # src/text_analyzer.py – zentrale Analyseklasse
 # src/text_analyzer.py – zentrale Analyseklasse (erweitert mit Statistik)
 
@@ -128,20 +129,25 @@ class TextAnalyzer:
         except Exception as e:
             print(f"⚠️ Konnte Diagramm nicht anzeigen: {e}")
 
-        # 💾 Exportieren
+        # 📆 Exportieren
         try:
             if file_format.lower() == "json":
                 df.to_json(export_path, orient="records", indent=2)
             else:
                 df.to_csv(export_path, index=False)
 
-            print(f"💾 Exportiert nach: {export_path}")
-            try:
-                os.startfile(export_path)
-            except Exception:
-                pass
+            print(f"📆 Exportiert nach: {export_path}")
+
+            # Windows-spezifisch absichern:
+            import platform
+            if platform.system() == "Windows":
+                try:
+                    os.startfile(export_path)
+                except Exception:
+                    print("⚠️ Konnte Datei nicht automatisch öffnen.")
+            else:
+                print(f"🔗 Datei gespeichert (manuell öffnen): {export_path}")
+
         except Exception as e:
             print(f"⚠️ Export oder Öffnen fehlgeschlagen: {e}")
 
-
-# Hier kommt die TextAnalyzer-Klasse hinein.
