@@ -125,7 +125,7 @@ class TextAnalyzer:
             plt.xlabel("Dateiname")
             plt.xticks(rotation=45, ha="right")
             plt.tight_layout()
-            plt.show()
+            #plt.show() # für CI deaktiviert
         except Exception as e:
             print(f"⚠️ Konnte Diagramm nicht anzeigen: {e}")
 
