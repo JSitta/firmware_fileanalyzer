@@ -2,6 +2,31 @@
 
 import re
 
+# Erste einfache Implementierung von get_suggestions()
+
+DEFAULT_SUGGESTIONS = {
+    "sensor_error": ["sensor failed", "sensor error"],
+    "voltage_warning": ["voltage drop", "low voltage"],
+    "communication_error": ["timeout", "CAN-Bus timeout"],
+    "firmware_issue": ["firmware exception", "assertion failed"],
+    "collision_error": ["collision", "obstacle detected"]
+}
+
+def get_suggestions(logtext: str):
+    log_lower = logtext.lower()
+    found = set()
+    results = []
+
+    for category, patterns in DEFAULT_SUGGESTIONS.items():
+        for pattern in patterns:
+            if pattern.lower() in log_lower and pattern not in found:
+                found.add(pattern)
+                results.append({"pattern": pattern, "category": category})
+
+    return results
+
+
+
 # Basis-CUSTOM_PATTERNS – manuell gepflegt oder Standard
 CUSTOM_PATTERNS = {
     "can_bus_timeout": r"can\s*-?bus\s+timeout\s+on\s+channel",
@@ -14,7 +39,7 @@ CUSTOM_PATTERNS = {
 #print("✅ CUSTOM_PATTERNS geladen:", CUSTOM_PATTERNS)
 # Optional: automatisch generierte Patterns ergänzen
 try:
-    from src.custom_patterns_generated import CUSTOM_PATTERNS as GENERATED_PATTERNS
+    from custom_patterns_generated_old import CUSTOM_PATTERNS as GENERATED_PATTERNS
     CUSTOM_PATTERNS.update(GENERATED_PATTERNS)
 except ImportError:
     print("⚠️ Keine automatisch generierten CUSTOM_PATTERNS gefunden.")
@@ -26,7 +51,7 @@ def classify_custom_error(message: str) -> str:
     """
     for label, pattern in CUSTOM_PATTERNS.items():
         if re.search(pattern, message, re.IGNORECASE):
-            print(f"{message} → {label}")
+            #print(f"{message} → {label}")
             return label
     return "generic_error"
 

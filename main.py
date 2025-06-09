@@ -674,7 +674,7 @@ def gui_loganalyzer():
     """
     Startet die Streamlit GUI aus dem ./experimental/gui/ Verzeichnis
     """
-    script_path = os.path.join("experimental", "gui", "gui_streamlit_loganalyzer_updated.py")
+    script_path = os.path.join("experimental", "gui", "gui_streamlit_loganalyzer_automatic.py")
     subprocess.run([sys.executable, "-m", "streamlit", "run", script_path], check=True)
     
 @app.command()

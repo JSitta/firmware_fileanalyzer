@@ -103,47 +103,52 @@ def parse_log_to_dataframe(text, classify: bool = True):
     Extrahiert Logzeilen in strukturierter Form (timestamp, level, message)
     und gibt einen DataFrame zurück.
     """
-
     pattern = re.compile(
-        r"\[?(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]?\s+(?P<level>\w+)\s+(?P<message>.+)"
+        r"\[?(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]?\s+"
+        r"(?:\[(?P<level>INFO|ERROR|WARN|DEBUG)\]"
+        r"|(?P<level_alt>INFO|ERROR|WARN|DEBUG))?\s+"
+        r"(?P<message>.+)"
     )
-
-    
     records = []
-    error_patterns = {
-        "sensor_error": r"sensor (array failure|timeout|error|disconnected)",
+    message_patterns = {
+        "sensor_error": r"sensor (array failure|timeout|error|disconnected|failed|fault)",
         "voltage_warning": r"voltage (fluctuation|drop|issue)",
         "communication_error": r"(communication link failure|disconnect|link error)",
         "firmware_issue": r"firmware (update failed|error)",
         "collision_error": r"(obstacle detected|collision detected)"
     } if classify else {}
+
     for line in text.splitlines():
         line = line.strip()
         match = pattern.search(line)
         if match:
             data = match.groupdict()
+            data["level"] = data.get("level") or data.get("level_alt")
+            data.pop("level_alt", None)
             try:
                 data["timestamp"] = datetime.strptime(data["timestamp"], "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 continue
+
             if classify:
                 msg = data["message"].lower()
-                for error_type, regex in error_patterns.items():
-                    if re.search(regex, msg):
-                        data["error_type"] = error_type
+                for message_type, msg_pattern in message_patterns.items():
+                    if re.search(msg_pattern, msg):
+                        data["error_type"] = message_type
                         break
                 else:
                     data["error_type"] = classify_custom_error(data["message"])
+
             records.append(data)
+
     df = pd.DataFrame(records)
 
-    # Wenn keine Klassifikation: typische Phrasen auswerten
     if not classify and not df.empty:
         df["message_key"] = df["message"].str.lower().str.extract(r"([a-z\- ]+)")
         top_phrases = df["message_key"].value_counts().head(10)
-        print("\n🔍 Häufigste Nachrichtentypen (Top 10):")
-        print(top_phrases)
         df.attrs["suggested_classes"] = top_phrases
 
-    print(df)
+        if "level" in df.columns and df["level"].isnull().all():
+            df.drop(columns=["level"], inplace=True)
+
     return df

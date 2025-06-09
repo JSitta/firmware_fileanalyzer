@@ -4,5 +4,5 @@ CUSTOM_PATTERNS = {
     'communication_error_2': r'timeout',
     'communication_error_3': r'CAN-Bus timeout',
     'firmware_issue_4': r'firmware exception',
-    'collision_error_5': r'obstacle detected'
+    'collision_error_5': r'obstacle detected',
 }
